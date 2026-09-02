@@ -10,6 +10,7 @@ from train_lgbm import model
 import preprocessing as pp
 import numpy as np
 import pandas as pd
+import os
 
 
 
@@ -45,4 +46,14 @@ for rec in target_recall:
 
 
 results_df = pd.DataFrame(results)
-print(results_df)
+results_dir = os.path.join(os.path.dirname(__file__), '..', 'results')
+os.makedirs(results_dir, exist_ok=True)
+results_df.to_csv(os.path.join(results_dir, 'threshold_results.csv'), index=False)
+
+model_results = pd.DataFrame([{
+    'model': 'LightGBM balanced',
+    'pr_auc': average_precision_score(pp.y_val, y_pred_proba),
+    'roc_auc': roc_auc_score(pp.y_val, y_pred_proba)
+}])
+
+model_results.to_csv(os.path.join(results_dir, 'model_comparison.csv'), index=False)
