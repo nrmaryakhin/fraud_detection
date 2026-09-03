@@ -6,7 +6,7 @@ import os
 
 
 
-
+reg_lambda = [0, 0.1, 1, 5, 10]
 
 for r in reg_lambda:
     model = LGBMClassifier(n_estimators=1100,
