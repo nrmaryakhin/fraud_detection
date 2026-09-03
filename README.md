@@ -12,7 +12,7 @@ ML-проект для обнаружения мошеннических тра�
 
 ---
 
-## Dataset
+## Данные
 
 В проекте используется датасет Credit Card Fraud Detection.
 
@@ -68,15 +68,251 @@ ML-проект для обнаружения мошеннических тра�
 
 ---
 
-## Models
+## Модели
 
 ### Logistic Regression
 
 В качестве baseline использовалась Logistic Regression с балансировкой классов:
 
 ```python
-    LogisticRegression(
+LogisticRegression(
     random_state=42,
     class_weight="balanced"
 )
 ```
+
+Модель показала следующие результаты на validation set:
+
+- **PR-AUC:** 0.6971
+- **ROC-AUC:** 0.9719
+
+Logistic Regression использовалась как baseline для сравнения с более сложной моделью.
+
+---
+
+### LightGBM
+
+В качестве основной модели использовался LightGBM с балансировкой классов:
+
+```python
+LGBMClassifier(
+    n_estimators=1100,
+    num_leaves=31,
+    learning_rate=0.02,
+    min_child_samples=20,
+    reg_lambda=0,
+    class_weight="balanced",
+    random_state=42
+)
+```
+
+LightGBM показал значительное улучшение по сравнению с baseline.
+
+---
+
+## Hyperparameter Tuning
+
+Подбор гиперпараметров выполнялся последовательно, чтобы оценить влияние отдельных параметров модели.
+
+Исследовались:
+
+- `n_estimators`
+- `learning_rate`
+- `num_leaves`
+- `min_child_samples`
+- `reg_lambda`
+
+Основной метрикой для выбора конфигурации был **PR-AUC**, поскольку задача характеризуется сильным дисбалансом классов.
+
+Лучшая конфигурация:
+
+| Parameter | Value |
+|---|---:|
+| `n_estimators` | 1100 |
+| `learning_rate` | 0.02 |
+| `num_leaves` | 31 |
+| `min_child_samples` | 20 |
+| `reg_lambda` | 0 |
+| `class_weight` | balanced |
+
+Результаты экспериментов сохранялись в:
+
+```text
+results/lgbm_tuning.csv
+```
+
+---
+
+## Model Evaluation
+
+Для оценки модели использовались:
+
+- **Precision** — доля действительно мошеннических транзакций среди всех предсказанных мошенническими;
+- **Recall** — доля обнаруженных мошеннических транзакций;
+- **F1-score** — гармоническое среднее Precision и Recall;
+- **ROC-AUC** — способность модели разделять два класса;
+- **PR-AUC** — качество классификации редкого положительного класса.
+
+### PR-AUC
+
+В задаче обнаружения мошенничества положительный класс является очень редким.
+
+При таком дисбалансе высокая ROC-AUC не всегда означает хорошее качество обнаружения мошеннических транзакций. Поэтому основной метрикой при выборе модели использовалась **PR-AUC**.
+
+---
+
+## Threshold Tuning
+
+Вместо использования стандартного порога `0.5` был проведён отдельный анализ различных thresholds.
+
+Для каждого целевого значения Recall подбирался threshold, позволяющий контролировать баланс между Precision и Recall.
+
+Например:
+
+| Target Recall | Threshold | Precision | Recall | F1 |
+|---:|---:|---:|---:|---:|
+| 70% | 0.9939 | 100.00% | 73.24% | 84.55% |
+| 75% | 0.9281 | 98.18% | 76.06% | **85.71%** |
+| 80% | 0.0149 | 89.06% | 80.28% | 84.44% |
+| 85% | 0.0004 | 53.51% | 85.92% | 65.95% |
+| 90% | 0.000005 | 6.99% | 90.14% | 12.97% |
+| 95% | 0.0000001 | 0.77% | 95.77% | 1.54% |
+
+Для финальной оценки был выбран threshold **0.9281**.
+
+Он был выбран на validation set и затем зафиксирован перед оценкой на test set.
+
+---
+
+## Final Test Results
+
+Финальная оценка модели проводилась на отложенной test выборке, которая не использовалась при подборе гиперпараметров и threshold.
+
+| Metric | Score |
+|---|---:|
+| Precision | **94.64%** |
+| Recall | **74.65%** |
+| F1-score | **83.46%** |
+| ROC-AUC | **97.58%** |
+| PR-AUC | **81.52%** |
+
+### Confusion Matrix
+
+```text
+[[42485     3]
+ [   18    53]]
+```
+
+Где:
+
+- **TN = 42,485**
+- **FP = 3**
+- **FN = 18**
+- **TP = 53**
+
+Модель обнаружила 53 из 71 мошеннической транзакции, при этом допустила только 3 ложных срабатывания среди нормальных транзакций.
+
+Финальные результаты сохранены в:
+
+```text
+results/final_metrics.csv
+```
+
+---
+
+## Model Interpretability
+
+Для интерпретации LightGBM использовался **SHAP**.
+
+Были выполнены:
+
+- глобальный анализ важности признаков;
+- SHAP beeswarm plot;
+- анализ влияния признака `V4`;
+- локальное объяснение мошеннической транзакции;
+- SHAP waterfall plot.
+
+### Global Feature Importance
+
+Наиболее значимыми признаками по среднему абсолютному SHAP были:
+
+1. `V4`
+2. `V12`
+3. `V14`
+4. `V3`
+5. `V5`
+6. `V15`
+7. `V8`
+8. `V22`
+9. `V11`
+10. `V26`
+
+Важно отметить, что SHAP показывает вклад признаков в предсказания модели, но не говорит о причинно-следственной связи.
+
+Результаты SHAP анализа сохраняются в:
+
+```text
+results/
+├── shap_summary_beeswarm.png
+├── shap_summary_bar.png
+├── shap_v4_impact.png
+├── shap_fraud_waterfall.png
+├── shap_global_importance.csv
+└── shap_fraud_explanation.csv
+```
+
+---
+
+## Структура проекта
+
+```text
+fraud-detection-ml/
+├── data/
+├── models/
+├── notebooks/
+│   └── eda.ipynb
+├── results/
+├── src/
+│   ├── preprocessing.py
+│   ├── train.py
+│   ├── threshold_tuning.py
+│   ├── train_lgbm.py
+│   ├── evaluate_lgbm.py
+│   ├── final_evaluation.py
+│   ├── feature_importance.py
+│   └── shap_analysis.py
+├── tests/
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Технологический стек
+
+- Python
+- Pandas
+- NumPy
+- Scikit-learn
+- LightGBM
+- SHAP
+- Matplotlib
+- Jupyter Notebook
+- Git
+- Docker
+
+---
+
+## Дальнейшие улучшения
+
+Планируемые улучшения проекта:
+
+- REST API для получения предсказаний;
+- FastAPI;
+- Docker-контейнеризация;
+- автоматические тесты;
+- более подробный анализ threshold;
+- мониторинг качества модели;
+- анализ data drift;
+- CI/CD pipeline.
