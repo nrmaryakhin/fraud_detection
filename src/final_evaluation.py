@@ -8,6 +8,7 @@ from sklearn.metrics import (
     average_precision_score,
     confusion_matrix
 )
+import pandas as pd
 
 
 
@@ -18,12 +19,26 @@ threshold = 0.9281007518
 y_test_threshold = (y_test_proba >= threshold).astype(int)
 cm = confusion_matrix(pp.y_test, y_test_threshold)
 
-print(f"Precision: {precision_score(pp.y_test, y_test_threshold):.4f}")
-print(f"Recall: {recall_score(pp.y_test, y_test_threshold):.4f}")
-print(f"F1: {f1_score(pp.y_test, y_test_threshold):.4f}")
-print(f"ROC-AUC: {roc_auc_score(pp.y_test, y_test_proba):.4f}")
-print(f"PR-AUC: {average_precision_score(pp.y_test, y_test_proba):.4f}")
-
+precision = precision_score(pp.y_test, y_test_threshold)
+recall = recall_score(pp.y_test, y_test_threshold)
+f1 = f1_score(pp.y_test, y_test_threshold)
+roc_auc = roc_auc_score(pp.y_test, y_test_proba)
+pr_auc = average_precision_score(pp.y_test, y_test_proba)
 cm = confusion_matrix(pp.y_test, y_test_threshold)
-print("Confusion matrix:")
-print(cm)
+
+
+results = pd.DataFrame([{
+    "model": "LightGBM",
+    "threshold": threshold,
+    "precision": precision,
+    "recall": recall,
+    "f1": f1,
+    "roc_auc": roc_auc,
+    "pr_auc": pr_auc,
+    "tn": cm[0, 0],
+    "fp": cm[0, 1],
+    "fn": cm[1, 0],
+    "tp": cm[1, 1]
+}])
+
+results.to_csv("../results/final_metrics.csv", index=False)
