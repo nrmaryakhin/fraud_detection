@@ -6,7 +6,7 @@ from sklearn.metrics import (
     average_precision_score,
     roc_auc_score,
 )
-from train_lgbm import model
+import joblib
 import preprocessing as pp
 import numpy as np
 import pandas as pd
@@ -15,10 +15,10 @@ import os
 
 
 
+model = joblib.load("../models/lgbm_model.pkl")
 y_pred_proba = model.predict_proba(pp.X_val)[:, 1]
 print(f"PR-AUC: {average_precision_score(pp.y_val, y_pred_proba):.4f}")
 print(f"ROC-AUC: {roc_auc_score(pp.y_val, y_pred_proba):.4f}")
-
 
 precision, recall, thresholds = precision_recall_curve(
     pp.y_val,
