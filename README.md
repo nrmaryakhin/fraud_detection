@@ -266,7 +266,7 @@ results/
 ## Структура проекта
 
 ```text
-fraud-detection-ml/
+fraud-detection/
 ├── data/
 ├── models/
 ├── notebooks/
@@ -281,8 +281,6 @@ fraud-detection-ml/
 │   ├── final_evaluation.py
 │   ├── feature_importance.py
 │   └── shap_analysis.py
-├── tests/
-├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```
