@@ -281,6 +281,7 @@ fraud-detection/
 │   ├── final_evaluation.py
 │   ├── feature_importance.py
 │   └── shap_analysis.py
+├── tests/
 ├── requirements.txt
 └── README.md
 ```
